@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Лабораторная часть - WEB-Programming 3</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u041b\u0430\u0431\u043e\u0440\u0430\u0442\u043e\u0440\u043d\u0430\u044f \u0447\u0430\u0441\u0442\u044c";
+        var mkdocs_page_input_path = "lr.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> WEB-Programming 3
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">3 lab</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Лабораторная часть</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">Приложение для бронирования столиков в ресторанах</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">Модель БД</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../practice/">Практическое задание</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">WEB-Programming 3</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">3 lab</li>
+      <li class="breadcrumb-item active">Лабораторная часть</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">Лабораторная часть</h1>
+<h2 id="_2">Приложение для бронирования столиков в ресторанах</h2>
+<h3 id="_3">Модель БД</h3>
+<p><img alt="Описание картинки" src="../images/bd.jpg" /></p>
+<p><strong>Модели Django</strong></p>
+<pre><code>from datetime import datetime
+
+from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from rest_framework.exceptions import ValidationError
+
+from restaurant.utils import time_from_index
+
+
+# Create your models here.
+class Restaurant(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    address = models.CharField(max_length=250)
+
+    def __str__(self):
+        return self.name
+
+
+class Table(models.Model):
+    table_number = models.PositiveIntegerField()
+    n_people = models.PositiveIntegerField()
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, null=True)
+
+    def __str__(self):
+        return f'Table {self.table_number} at {self.restaurant.name}'
+
+
+class Reservation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    table = models.ForeignKey(Table, on_delete=models.CASCADE)
+    dt_created = models.DateField(auto_now_add=True)
+    dt_reservation = models.DateField()
+
+    &quot;&quot;&quot;
+    Suppose restaurants work for 12 hours, bookings must be in 30
+    minute intervals. That way, the booking start and end may be denoted
+    as integers from 0 to 23 (cannot start booking when restaurant closes)
+
+    &quot;&quot;&quot;
+
+    time_start = models.PositiveIntegerField(
+        validators=[MaxValueValidator(23)],
+        help_text=&quot;The start time of the booking&quot;
+    )
+    time_end = models.PositiveIntegerField(
+        validators=[MaxValueValidator(24),
+                    MinValueValidator(1)],
+        help_text=&quot;The start time of the booking&quot;
+    )
+
+    n_people = models.PositiveIntegerField()
+    comment = models.TextField(blank=True)
+
+    def clean(self):
+        super().clean()
+
+        # if the reservation ends before start
+        if self.time_end &lt; self.time_start:
+            raise ValidationError(&quot;Reservation cannot end before start time&quot;)
+
+        # if there are too many people for the table
+        if self.n_people &gt; self.table.n_people:
+            raise ValidationError(&quot;This table cannot serve so many people&quot;)
+
+        # if one tries to reserve before today
+        if self.dt_reservation &lt; datetime.today().date():
+            raise ValidationError(&quot;Cannot reserve into the past&quot;)
+
+    def __str__(self):
+        return f'{self.user.username} reservation for {self.dt_reservation} \
+        from {time_from_index(self.time_start)} to {time_from_index(self.time_end)}'
+
+
+class Review(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
+    dt_created = models.DateField(auto_now_add=True)
+    rating = models.PositiveIntegerField(
+        validators=[MinValueValidator(1),
+                    MaxValueValidator(10)],
+    )
+    comment = models.TextField(blank=True)
+
+</code></pre>
+<p><strong>Взаимодействие:</strong></p>
+<ul>
+<li>Пользователь может создать ресторан</li>
+<li>"Владелец ресторана" создает столики</li>
+<li>Гость может посмотреть все рестораны</li>
+<li>Гость может посмотреть столики</li>
+<li>Гость может сделать запрос на свободные столики в ресторане на время</li>
+<li>Гость может создать бронь на время</li>
+<li>"Владелец ресторана" и Гость-автор могут удалить бронь</li>
+<li>"Владелец ресторана" может посмотреть все актуальные брони для каждого ресторана</li>
+<li>Гость может посмотреть все свои актуальные брони</li>
+</ul>
+<pre><code>/restaurants/
+  [GET] - список всех ресторанов
+  [POST] - создание ресторана
+  /id
+    [GET] - информация о столе и всех столиках
+    [CRUD]
+    /tables?date
+    [GET] - информация о свободных столах в дату. По умолчанию - сегодня
+      /&lt;tableid&gt;
+      [POST] - создает бронь
+    /comment - [CRUD]
+/me
+  /restaurants - информация о ресторанах пользователя
+    /id?date - CRUD по ресторану и просмотр всех броней на date (по умолчанию - сегодня)
+  /bookings - информация о всех бронях пользователя
+</code></pre>
+<p><strong>Пароли</strong></p>
+<pre><code>superuser: admin-admin
+
+accounts:
+- acc1: eightcharacters
+    владеет рестораном 1
+- acc2: eightcharacters
+- acc3: eightcharacters
+
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../practice/" class="btn btn-neutral float-right" title="Практическое задание">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../practice/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
