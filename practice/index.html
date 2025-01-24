@@ -52,6 +52,12 @@
     <li class="toctree-l2"><a class="reference internal" href="#1">Задание 1</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#2">Задание 2</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">Модели</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">Запросы</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#3">Задание 3</a>
     </li>
@@ -152,28 +158,57 @@ Owner: William Jenkins, license: William Jenkins - DL111122 (Z)
 <blockquote>
 <p>Где это необходимо, добавьте related_name к полям модели</p>
 </blockquote>
-<p>Код:</p>
-<pre><code class="language-python">import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'blogfspo.settings')
-django.setup()
-from blog.models import CarOwner, Car, DriverLicense, Ownership
+<h4 id="_2">Модели</h4>
+<pre><code class="language-python">from django.db import models
 
-# 1 запрос
+class CarOwner(models.Model):
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f&quot;{self.first_name} {self.last_name}&quot;
+
+class Car(models.Model):
+    brand = models.CharField(max_length=50)
+    model = models.CharField(max_length=50)
+    color = models.CharField(max_length=20)
+    owner = models.ManyToManyField(CarOwner, through='Ownership', related_name='cars')
+
+    def __str__(self):
+        return f&quot;{self.brand} {self.model} ({self.color})&quot;
+
+class DriverLicense(models.Model):
+    owner = models.OneToOneField(CarOwner, on_delete=models.CASCADE, related_name='driver_license')
+    number = models.CharField(max_length=20)
+    category = models.CharField(max_length=10)
+
+    def __str__(self):
+        return f&quot;{self.owner} - {self.number} ({self.category})&quot;
+
+class Ownership(models.Model):
+    owner = models.ForeignKey(CarOwner, on_delete=models.CASCADE, related_name='ownerships')
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='ownerships')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+</code></pre>
+<h4 id="_3">Запросы</h4>
+<pre><code class="language-python">from blog.models import CarOwner, Car, DriverLicense, Ownership
+
+# 1. Вывести все машины марки Toyota
 toyota_cars = Car.objects.filter(brand=&quot;Toyota&quot;)
 print(&quot;Все машины марки Toyota:&quot;)
 for car in toyota_cars:
     print(f&quot;- {car}&quot;)
 print()
 
-# 2 запрос
-drivers_named_oleg = CarOwner.objects.filter(first_name=&quot;John&quot;)
+# 2. Найти всех водителей с именем John
+drivers_named_john = CarOwner.objects.filter(first_name=&quot;John&quot;)
 print(&quot;Все водители с именем John:&quot;)
-for driver in drivers_named_oleg:
+for driver in drivers_named_john:
     print(f&quot;- {driver}&quot;)
 print()
 
-# 3 запрос
+# 3. Случайный владелец и его удостоверение
 random_owner = CarOwner.objects.first()
 owner_id = random_owner.id
 print(f&quot;Случайный владелец: {random_owner}, ID: {owner_id}&quot;)
@@ -181,20 +216,18 @@ driver_license = DriverLicense.objects.get(owner_id=owner_id)
 print(f&quot;Удостоверение владельца {owner_id}: {driver_license}&quot;)
 print()
 
-# 4 запрос
-red_cars = Car.objects.filter(color=&quot;Red&quot;)
+# 4. Владельцы красных машин
+red_car_owners = CarOwner.objects.filter(cars__color=&quot;Red&quot;).distinct()
 print(&quot;Владельцы красных машин:&quot;)
-for car in red_cars:
-    owners = car.owner.all()
-    for owner in owners:
-        print(f&quot;- {owner}&quot;)
+for owner in red_car_owners:
+    print(f&quot;- {owner}&quot;)
 print()
 
-# 5 запрос
-owners_with_cars_from_2010 = Ownership.objects.filter(start_date__year=2010)
+# 5. Владельцы, чей год владения машиной начинается с 2010
+owners_with_cars_from_2010 = CarOwner.objects.filter(ownerships__start_date__year=2010).distinct()
 print(&quot;Владельцы, чей год владения машиной начинается с 2010:&quot;)
-for ownership in owners_with_cars_from_2010:
-    print(f&quot;- {ownership.owner}&quot;)
+for owner in owners_with_cars_from_2010:
+    print(f&quot;- {owner}&quot;)
 </code></pre>
 <p>Вывод в консоль:</p>
 <pre><code>Все машины марки Toyota:
